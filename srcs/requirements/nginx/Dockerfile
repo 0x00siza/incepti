@@ -1,0 +1,24 @@
+# Base Image
+FROM debian:bookworm
+
+# Update and Install Packages
+RUN apt update && apt install -y \
+    openssl \
+    vim \
+    nginx
+
+# Create SSL directory (if not created)
+RUN mkdir -p /etc/nginx/ssl
+
+# Generate SSL certificate and key without a password
+RUN openssl req -x509 -nodes -out /etc/nginx/ssl/inception.crt -keyout /etc/nginx/ssl/inception.key -subj "/C=MA/ST=TETOUAN/L=TETOUAN/O=42/OU=1337/CN=ner-roui.42.fr/UID=ner-roui"
+
+COPY ./conf/nginx.conf /etc/nginx/conf.d
+
+# remove the default nginx conf file
+RUN rm -rf /etc/nginx/sites-enabled/*
+
+EXPOSE 80
+
+# Start NGINX in the foreground
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,80 @@
+
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb
+    volumes:                  
+      - mariadb_volume:/var/lib/mysql
+    networks:
+      - inception
+    build: 
+      context: requirements/mariadb
+    restart: always
+    env_file: .env
+    secrets:
+      - db_password
+      - admin_password
+      - user_password
+
+  wordpress:
+    container_name: wordpress
+    image: wordpress
+    depends_on:
+      - mariadb
+    volumes:
+      - wordpress_volume:/var/www/wordpress
+    networks:
+      - inception
+    build:
+      context: requirements/wordpress
+    restart: always
+    env_file: .env
+    secrets:
+      - db_password
+      - admin_password
+      - user_password
+
+  nginx:
+    container_name: nginx
+    image: nginx
+    depends_on:
+      - wordpress
+    volumes:
+      - wordpress_volume:/var/www/wordpress
+    networks:
+      - inception
+    build:
+      context: requirements/nginx
+    restart: always
+    env_file: .env
+    ports:
+      - "80:80"
+
+volumes:
+  mariadb_volume:
+    name: mariadb_volume
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/ner-roui/data/mariadb_d_volume
+
+  wordpress_volume:
+    name: wordpress_volume
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/ner-roui/data/wordpress_d_volume
+
+networks:
+  inception:
+    driver: bridge
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  admin_password:
+    file: ../secrets/admin_password.txt
+  user_password:
+    file: ../secrets/user_password.txt
