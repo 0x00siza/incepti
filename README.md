@@ -1,176 +1,188 @@
-Here is the English translation of your text:
+*This project has been created as part of the 42 curriculum by ner-roui.*
+
+# Inception
+
+## Description
+
+**Inception** is a system-administration project that deploys a fully Dockerized WordPress website running behind an NGINX reverse proxy with HTTPS (TLSv1.2/1.3) and backed by a MariaDB database. All services run in isolated containers orchestrated via Docker Compose, demonstrating infrastructure-as-code best practices.
+
+### Goal
+
+Set up a small infrastructure composed of different services under specific rules:
+- Each service runs in a dedicated container built from a custom Dockerfile (Debian Bookworm base).
+- NGINX is the only entry point and exposes port **443** (HTTPS with self-signed certificate).
+- WordPress uses **PHP-FPM** (no NGINX inside the container) and communicates with NGINX via FastCGI.
+- MariaDB stores site data; credentials are managed through **Docker secrets**.
+- Data persists on the host via **bind mounts**.
+
+### Brief Overview
+
+```
+[ Client ] ⇄ https:443 ⇄ [ NGINX ] ⇄ fastcgi:9000 ⇄ [ WordPress/PHP-FPM ] ⇄ [ MariaDB:3306 ]
+```
+
+| Service   | Base Image        | Exposed Port | Role                          |
+|-----------|-------------------|--------------|-------------------------------|
+| nginx     | debian:bookworm   | 443 (host)   | TLS termination, reverse proxy|
+| wordpress | debian:bookworm   | 9000 (internal) | PHP-FPM app server          |
+| mariadb   | debian:bookworm   | 3306 (internal) | Database                    |
 
 ---
 
-# Inception – WordPress, MariaDB, and NGINX with Docker Compose
+## Instructions
 
-This project deploys a complete WordPress environment on Debian (containers), with a MariaDB database and an NGINX reverse proxy configured with HTTPS (self-signed certificate), orchestrated via Docker Compose. Data is persisted on the host system.
+### Prerequisites
 
-## Table of Contents
+- Linux (tested on Debian/Ubuntu)
+- `make`
+- Docker Engine + Docker Compose plugin
+- `sudo` access (for `/etc/hosts` and volume cleanup)
 
-* Architecture overview
-* Prerequisites
-* Quick start
-* Services and configuration
-* Repository structure
-* Useful Make commands
-* Customization (domains, paths, variables)
-* Troubleshooting
-
-## Architecture Overview
-
-* NGINX (443) proxies internally to PHP-FPM (WordPress).
-* PHP-FPM (WordPress) connects to MariaDB.
-* Docker secrets for passwords (generated via `make`).
-* Bind-mounted volumes to the host system for persistence.
-
-Logical diagram:
-
-```
-[ Client ] ⇄ https:443 ⇄ [ NGINX ] ⇄ fastcgi ⇄ [ WordPress (php-fpm) ] ⇄ [ MariaDB ]
-```
-
-## Prerequisites
-
-* Linux with `make`
-* Docker and Docker Compose (plugin) installed and working
-* `sudo` access (to add the domain to `/etc/hosts` and clean up if needed)
-
-## Quick Start
-
-From the project root directory:
+### Installation & Execution
 
 ```bash
-make all        # generates secrets, builds and starts services
-# or
-make run        # same (also generates secrets if missing)
+# 1. Clone the repository
+git clone <repo-url> inception && cd inception
+
+# 2. Build and run (secrets generated automatically)
+make
 ```
 
-An entry will be added to `/etc/hosts` if needed:
+This will:
+1. Generate random passwords in `./secrets/`.
+2. Create host directories for persistent data.
+3. Add `127.0.0.1 ner-roui.42.fr` to `/etc/hosts` if not present.
+4. Build all images and start containers.
 
-```
-127.0.0.1 ner-roui.42.fr
-```
+Access the site at **https://ner-roui.42.fr** (accept the self-signed certificate warning).
 
-Then open your browser at:
+### Useful Commands
 
-* [https://ner-roui.42.fr](https://ner-roui.42.fr)
+| Command              | Description                                         |
+|----------------------|-----------------------------------------------------|
+| `make build`         | Build images only                                   |
+| `make run`           | Generate secrets, prepare volumes, build & start    |
+| `make stop`          | Stop and remove containers                          |
+| `make clean`         | Stop + remove images, volumes, orphans              |
+| `make fclean`        | Full clean including host data and secrets          |
+| `make re`            | Rebuild from scratch                                |
+| `make generate_passwords` | Regenerate secrets (if missing)               |
 
-Since the certificate is self-signed, accept the security exception.
+---
 
-## Services and Configuration
+## Project Description
 
-* **NGINX**
+### Use of Docker
 
-  * Listens on `443` (exposed on the host as `443:443`).
-  * Self-signed certificate generated in the image (CN `ner-roui.42.fr`).
-  * Serves the WordPress directory and proxies PHP to `wordpress:9000`.
+Each service is containerized to ensure:
+- **Isolation**: services cannot interfere with each other or the host.
+- **Reproducibility**: images are built from Dockerfiles with pinned base (`debian:bookworm`).
+- **Portability**: the stack runs identically on any Docker-capable host.
 
-* **WordPress (php-fpm)**
+### Sources Included
 
-  * Exposes `9000` internally (not published on the host).
-  * Downloads and installs WordPress + WP-CLI.
-  * Automatically configures WordPress on first launch via `setup_wp_config.sh`.
+| Path                                      | Purpose                                      |
+|-------------------------------------------|----------------------------------------------|
+| `srcs/docker-compose.yml`                 | Service definitions, networks, volumes, secrets |
+| `srcs/.env`                               | Environment variables (non-sensitive)        |
+| `srcs/requirements/nginx/`                | NGINX Dockerfile + TLS config                |
+| `srcs/requirements/wordpress/`            | WordPress/PHP-FPM Dockerfile + setup script  |
+| `srcs/requirements/mariadb/`              | MariaDB Dockerfile + init script             |
+| `./secrets/`                              | Auto-generated password files (gitignored)   |
 
-* **MariaDB**
+### Design Choices
 
-  * Exposes `3306` internally (not published on the host).
-  * Initializes the database and user via `script_db.sh`.
+1. **Custom images** instead of official ones — gives full control and satisfies project rules.
+2. **Secrets for passwords** — avoids leaking credentials in environment or logs.
+3. **Bind mounts** for persistence — data survives container recreation and is easy to back up.
+4. **Bridge network** — containers communicate by service name; only NGINX exposes a port.
 
-### Environment Variables and Secrets
+---
 
-The file `srcs/.env` is loaded by Docker Compose and contains, among others:
+## Technical Comparisons
 
-* `DB_NAME`, `DB_USER`, `DB_PASS_FILE`, `DB_HOST`
-* `URL`, `TITTLE`, `ADMIN_USER`, `ADMIN_PASS_FILE`, `ADMIN_EMAIL`
-* `USER_TWO`, `USER_TWO_EMAIL`, `USER_PASS_FILE`
+### Virtual Machines vs Docker
 
-Secrets (files) are generated in `./secrets` by `make` and mounted in containers under `/run/secrets`:
+| Aspect            | Virtual Machine                         | Docker Container                        |
+|-------------------|----------------------------------------|----------------------------------------|
+| Isolation level   | Full (hypervisor + guest OS)           | Process-level (shared kernel)          |
+| Startup time      | Minutes                                | Seconds                                |
+| Resource usage    | High (each VM has its own OS)          | Low (shares host kernel)               |
+| Portability       | Requires compatible hypervisor         | Runs anywhere Docker is installed      |
+| Use case          | Strong isolation, different OS         | Microservices, CI/CD, dev environments |
 
-* `db_password.txt` → `/run/secrets/db_password`
-* `admin_password.txt` → `/run/secrets/admin_password`
-* `user_password.txt` → `/run/secrets/user_password`
+**Choice**: Docker — lightweight, fast, sufficient isolation for this web stack.
 
-### Persistent Volumes (Bind Mounts)
+### Secrets vs Environment Variables
 
-* WordPress: `/home/ner-roui/data/wordpress_d_volume`
-* MariaDB: `/home/ner-roui/data/mariadb_d_volume`
+| Aspect            | Environment Variables                  | Docker Secrets                          |
+|-------------------|----------------------------------------|----------------------------------------|
+| Visibility        | Visible in `docker inspect`, logs      | Mounted as files; not in inspect output|
+| Security          | Easily leaked                          | More secure (tmpfs, restricted perms)  |
+| Rotation          | Requires container restart             | Can update secret and recreate service |
+| Complexity        | Simple                                 | Slightly more setup                    |
 
-These paths are defined in `srcs/docker-compose.yml`.
+**Choice**: Secrets for passwords (`db_password`, `admin_password`, `user_password`); environment variables for non-sensitive config (`DB_NAME`, `URL`).
 
-## Repository Structure
+### Docker Network vs Host Network
 
-```
-.
-├── Makefile
-└── srcs/
-    ├── .env
-    ├── docker-compose.yml
-    └── requirements/
-        ├── mariadb/
-        │   ├── Dockerfile
-        │   ├── conf/50-server.cnf
-        │   └── tools/script_db.sh
-        ├── nginx/
-        │   ├── Dockerfile
-        │   └── conf/nginx.conf
-        └── wordpress/
-            ├── Dockerfile
-            └── tools/setup_wp_config.sh
-```
+| Aspect            | Bridge Network (default)               | Host Network                            |
+|-------------------|----------------------------------------|----------------------------------------|
+| Isolation         | Containers have private IPs            | Containers share host's network stack  |
+| Port mapping      | Explicit (`-p 443:443`)                | No mapping; container binds directly   |
+| Security          | Better (services hidden behind proxy)  | Weaker (all ports exposed)             |
+| Use case          | Multi-container apps, controlled exposure | Performance-critical, single service |
 
-## Useful Make Commands
+**Choice**: Bridge network `inception` — isolates internal traffic; only NGINX publishes port 443.
 
-```bash
-make build   # builds the images
-make run     # creates volume folders, adds /etc/hosts, starts services
-make stop    # stops and removes containers
-make clean   # stop + remove images, attached volumes, and orphans
-make fclean  # clean + purge host volumes and secrets + docker prune
-make re      # stop, fclean, build, then run
-```
+### Docker Volumes vs Bind Mounts
 
-Secrets are automatically generated if missing:
+| Aspect            | Named Volume                           | Bind Mount                              |
+|-------------------|----------------------------------------|----------------------------------------|
+| Management        | Managed by Docker                      | Managed by user (host path)            |
+| Portability       | Easier to back up via Docker CLI       | Requires knowing host path             |
+| Performance       | Optimized on some platforms            | Native filesystem speed                |
+| Flexibility       | Less (opaque location)                 | More (direct host access)              |
 
-```bash
-make generate_passwords
-```
+**Choice**: Bind mounts (`/home/ner-roui/data/...`) — easy inspection, backup, and satisfies project requirement for host persistence.
 
-## Customization (Domains, Paths, Variables)
+---
 
-* **Domain/URL**
+## Resources
 
-  * Edit `DOMAIN_NAME` and `URL` in `srcs/.env`.
-  * Update the NGINX certificate generation (NGINX Dockerfile) if you change the CN.
-  * Adjust the `/etc/hosts` entry if different from `ner-roui.42.fr`.
+### Official Documentation
 
-* **Volume paths**
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Reference](https://docs.docker.com/compose/compose-file/)
+- [NGINX Documentation](https://nginx.org/en/docs/)
+- [WordPress Developer Resources](https://developer.wordpress.org/)
+- [MariaDB Knowledge Base](https://mariadb.com/kb/en/)
+- [WP-CLI Handbook](https://make.wordpress.org/cli/handbook/)
 
-  * Edit the `device:` paths in `srcs/docker-compose.yml` if your `$HOME`/user differs.
+### Articles & Tutorials
 
-* **WordPress and DB accounts**
+- [Docker Secrets Management](https://docs.docker.com/engine/swarm/secrets/)
+- [Self-Signed Certificates with OpenSSL](https://www.openssl.org/docs/man1.1.1/man1/req.html)
+- [PHP-FPM + NGINX Setup](https://www.php.net/manual/en/install.fpm.php)
 
-  * `srcs/.env` controls names and emails.
-  * Passwords come from secrets (auto-generated by `make`).
+### AI Usage
 
-## Troubleshooting
+AI assistance (GitHub Copilot / ChatGPT) was used for:
+- **Documentation drafting**: generating README, USER_DOC, and DEV_DOC templates.
+- **Shell script review**: verifying `script_db.sh` and `setup_wp_config.sh` logic.
+- **Dockerfile best-practice suggestions**: layer ordering, cleanup commands.
+- **Troubleshooting tips**: debugging NGINX ↔ PHP-FPM connection issues.
 
-* **Port 443 in use**: stop the service or change the NGINX `ports` mapping.
-* **Untrusted certificate**: expected (self-signed). Accept the exception in your browser.
-* **WordPress not configured on first start**:
+All AI-generated content was reviewed, tested, and adapted to fit project requirements.
 
-  * Wait a few seconds; `setup_wp_config.sh` runs WP-CLI after the DB is ready.
-  * Check logs:
+---
 
-    ```bash
-    docker compose -f srcs/docker-compose.yml logs -f wordpress
-    ```
-* **Local DNS issues**:
+## Additional Documentation
 
-  * Confirm the `/etc/hosts` entry is present.
-* **Full reset**:
-
-  * `make fclean` then `make run`.
+| File           | Purpose                                           |
+|----------------|---------------------------------------------------|
+| [USER_DOC.md](USER_DOC.md)   | End-user guide: access, credentials, health checks |
+| [DEV_DOC.md](DEV_DOC.md)     | Developer guide: setup, build, manage, persist   |
 
 ---
 
