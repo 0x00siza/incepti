@@ -89,9 +89,9 @@ docker-compose -f srcs/docker-compose.yml logs -f nginx
 docker-compose -f srcs/docker-compose.yml logs -f wordpress
 docker-compose -f srcs/docker-compose.yml logs -f mariadb
 ```
-- Test HTTPS locally (ignore cert warnings with `-k`):
+- Test HTTPS locally:
 ```bash
-curl -k -I https://ner-roui.42.fr
+curl -v https://ner-roui.42.fr
 ```
 - Quick DB check (list databases):
 ```bash
