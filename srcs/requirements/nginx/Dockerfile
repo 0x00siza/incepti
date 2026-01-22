@@ -18,7 +18,7 @@ COPY ./conf/nginx.conf /etc/nginx/conf.d
 # remove the default nginx conf file
 RUN rm -rf /etc/nginx/sites-enabled/*
 
-EXPOSE 80
+EXPOSE 443
 
 # Start NGINX in the foreground
 CMD ["nginx", "-g", "daemon off;"]

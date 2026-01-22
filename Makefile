@@ -13,26 +13,29 @@ GENERATE_PASSWORD_CMD := openssl rand -base64 20
 all: generate_passwords run
 
 build:
-	@echo "$(GREEN)Building Docker Compose setup...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) build
+    @echo "$(GREEN)Building Docker Compose setup...$(NC)"
+    @docker-compose -f $(DOCKER_COMPOSE_FILE) build
 
 run: generate_passwords
-	@echo "$(GREEN)Starting Docker Compose setup...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) up -d --build
+    @echo "$(GREEN)Starting Docker Compose setup...$(NC)"
+    @mkdir -p /home/ner-roui/data/wordpress_d_volume/
+    @mkdir -p /home/ner-roui/data/mariadb_d_volume/
+    @grep -q "ner-roui.42.fr" /etc/hosts || echo "127.0.0.1 ner-roui.42.fr" | sudo tee -a /etc/hosts
+    @docker-compose -f $(DOCKER_COMPOSE_FILE) up -d --build
 
 stop:
-	@echo "$(RED)Stopping Docker Compose setup...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down
+    @echo "$(RED)Stopping Docker Compose setup...$(NC)"
+    @docker-compose -f $(DOCKER_COMPOSE_FILE) down
 
 clean:
-	@echo "$(RED)Cleaning Docker Compose setup...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down --rmi all -v --remove-orphans
+    @echo "$(RED)Cleaning Docker Compose setup...$(NC)"
+    @docker-compose -f $(DOCKER_COMPOSE_FILE) down --rmi all -v --remove-orphans
 
 fclean: clean
-	@sudo rm -drf /home/ner-roui/data/wordpress_d_volume/*
-	@sudo rm -drf /home/ner-roui/data/mariadb_d_volume/*
-	@sudo docker system prune -af
-	@sudo rm -rf $(D_SECRETS)
+    @sudo rm -drf /home/ner-roui/data/wordpress_d_volume/*
+    @sudo rm -drf /home/ner-roui/data/mariadb_d_volume/*
+    @sudo docker system prune -af
+    @sudo rm -rf $(D_SECRETS)
 
 re: stop fclean build run
 
@@ -40,11 +43,11 @@ re: stop fclean build run
 generate_passwords: $(D_SECRETS)/db_password.txt $(D_SECRETS)/admin_password.txt $(D_SECRETS)/user_password.txt
 
 $(D_SECRETS)/%.txt: | $(D_SECRETS)
-	@echo "Generating password for $*"
-	@$(GENERATE_PASSWORD_CMD) > $@
+    @echo "Generating password for $*"
+    @$(GENERATE_PASSWORD_CMD) > $@
 
 # Ensure the secrets directory exists
 $(D_SECRETS):
-	@mkdir -p $@
+    @mkdir -p $@
 
 .PHONY: all build run stop clean re generate_passwords
