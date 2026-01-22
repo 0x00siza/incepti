@@ -165,16 +165,9 @@ Each service is containerized to ensure:
 - [Self-Signed Certificates with OpenSSL](https://www.openssl.org/docs/man1.1.1/man1/req.html)
 - [PHP-FPM + NGINX Setup](https://www.php.net/manual/en/install.fpm.php)
 
-### AI Usage
 
-AI assistance (GitHub Copilot / ChatGPT) was used for:
-- **Documentation drafting**: generating README, USER_DOC, and DEV_DOC templates.
-- **Shell script review**: verifying `script_db.sh` and `setup_wp_config.sh` logic.
-- **Dockerfile best-practice suggestions**: layer ordering, cleanup commands.
-- **Troubleshooting tips**: debugging NGINX ↔ PHP-FPM connection issues.
-
-All AI-generated content was reviewed, tested, and adapted to fit project requirements.
-
+### how AI was used
+AI helped me understand new concepts in the Inception project by breaking down complex topics such as Docker, containers, networking, and databases into simple, step-by-step explanations. It guided me through choosing correct configurations instead of blindly copying commands. AI also helped me connect theory with practice by explaining why certain tools and commands are used, which improved my problem-solving skills and overall understanding of the project.
 ---
 
 ## Additional Documentation
